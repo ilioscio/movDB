@@ -1,0 +1,39 @@
+# ── Go ────────────────────────────────────────────────────────────────────────
+# Compiled binaries (project name and any cross-compile outputs)
+/movdb
+/movdb-*
+
+# Test output
+*.out
+coverage.html
+
+# Vendor directory (we pin via vendorHash in flake.nix instead)
+vendor/
+
+# Delve debug binary
+__debug_bin*
+
+# ── Nix ───────────────────────────────────────────────────────────────────────
+result
+result-*
+.direnv/
+
+# ── Generated output (don't commit the tool's own output) ─────────────────────
+*.html
+*.pdf
+
+# ── Editor / IDE ──────────────────────────────────────────────────────────────
+# Vim
+*.swp
+*.swo
+*~
+
+# JetBrains (GoLand, etc.)
+.idea/
+
+# VS Code
+.vscode/
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
