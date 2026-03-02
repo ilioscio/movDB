@@ -80,13 +80,23 @@ func writeTypstPreamble(b *strings.Builder, cfg Config) {
     #let range-str = if markers.len() > 0 {
       "'" + markers.first().value + "' to '" + markers.last().value + "'"
     } else { "" }
-    #grid(
-      columns: (1fr, auto, 1fr),
-      align: (left + horizon, center + horizon, right + horizon),
-      [#strong[%s] #h(1em) %s],
-      [#strong[#range-str]],
-      [Page #counter(page).display()],
-    )
+    #if calc.even(here().page()) [
+      #grid(
+        columns: (1fr, auto, 1fr),
+        align: (left + horizon, center + horizon, right + horizon),
+        [Page #counter(page).display()],
+        [#strong[#range-str]],
+        [#strong[%[1]s] #h(1em) %[2]s],
+      )
+    ] else [
+      #grid(
+        columns: (1fr, auto, 1fr),
+        align: (left + horizon, center + horizon, right + horizon),
+        [#strong[%[1]s] #h(1em) %[2]s],
+        [#strong[#range-str]],
+        [Page #counter(page).display()],
+      )
+    ]
     #v(2pt)
     #line(length: 100%%, stroke: 0.5pt)
     #v(2pt)

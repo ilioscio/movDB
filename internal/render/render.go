@@ -120,8 +120,11 @@ body {
 }
 
 /* ── Page header ─────────────────────────────────────────────────────────── */
-/* grid: [title date] | [range] | [page#]
-   1fr on each side keeps range truly centered regardless of side widths.    */
+/* grid: 3 cells — outer edges hold page# and title+date (1fr each so range
+   stays truly centered), auto center holds the range.
+   Odd pages  (recto): [title date] | [range] | [page#]
+   Even pages (verso): [page#]      | [range] | [title date]
+   This keeps page# at the outer edge for easy thumb-through on duplex prints. */
 .page-header {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -133,6 +136,7 @@ body {
   font-size: 11pt;
 }
 .header-left   { display: flex; gap: 1.5em; }
+.header-right  { display: flex; gap: 1.5em; justify-content: flex-end; }
 .header-title  { font-weight: bold; }
 .header-date   {}
 .header-range  { text-align: center; padding: 0 1em; font-weight: bold; }
@@ -212,20 +216,39 @@ body {
 `, html.EscapeString(cfg.Title))
 }
 
+func writeRangeSpan(b *strings.Builder, indent, first, last string) {
+	if first != "" {
+		fmt.Fprintf(b, "%s<span class=\"header-range\">'%s' to '%s'</span>\n",
+			indent, html.EscapeString(first), html.EscapeString(last))
+	} else {
+		fmt.Fprintf(b, "%s<span class=\"header-range\"></span>\n", indent)
+	}
+}
+
 func writePage(b *strings.Builder, p layout.Page, cfg Config) {
+	first, last := pageRangeParts(p, cfg.ByYear)
+
 	fmt.Fprintf(b, "<div class=\"page\">\n")
 	fmt.Fprintf(b, "  <div class=\"page-header\">\n")
-	fmt.Fprintf(b, "    <div class=\"header-left\">\n")
-	fmt.Fprintf(b, "      <span class=\"header-title\">%s</span>\n", html.EscapeString(cfg.Title))
-	fmt.Fprintf(b, "      <span class=\"header-date\">%s</span>\n", html.EscapeString(cfg.Date))
-	fmt.Fprintf(b, "    </div>\n")
-	if first, last := pageRangeParts(p, cfg.ByYear); first != "" {
-		fmt.Fprintf(b, "    <span class=\"header-range\">'%s' to '%s'</span>\n",
-			html.EscapeString(first), html.EscapeString(last))
+
+	if p.Number%2 == 0 {
+		// Even page (verso): page# | range | title+date
+		fmt.Fprintf(b, "    <span>Page %d</span>\n", p.Number)
+		writeRangeSpan(b, "    ", first, last)
+		fmt.Fprintf(b, "    <div class=\"header-right\">\n")
+		fmt.Fprintf(b, "      <span class=\"header-title\">%s</span>\n", html.EscapeString(cfg.Title))
+		fmt.Fprintf(b, "      <span class=\"header-date\">%s</span>\n", html.EscapeString(cfg.Date))
+		fmt.Fprintf(b, "    </div>\n")
 	} else {
-		fmt.Fprintf(b, "    <span class=\"header-range\"></span>\n")
+		// Odd page (recto): title+date | range | page#
+		fmt.Fprintf(b, "    <div class=\"header-left\">\n")
+		fmt.Fprintf(b, "      <span class=\"header-title\">%s</span>\n", html.EscapeString(cfg.Title))
+		fmt.Fprintf(b, "      <span class=\"header-date\">%s</span>\n", html.EscapeString(cfg.Date))
+		fmt.Fprintf(b, "    </div>\n")
+		writeRangeSpan(b, "    ", first, last)
+		fmt.Fprintf(b, "    <span class=\"header-pagenum\">Page %d</span>\n", p.Number)
 	}
-	fmt.Fprintf(b, "    <span class=\"header-pagenum\">Page %d</span>\n", p.Number)
+
 	fmt.Fprintf(b, "  </div>\n")
 
 	fmt.Fprintf(b, "  <div class=\"page-columns\">\n")
@@ -270,7 +293,7 @@ func writeErrata(b *strings.Builder, entries []layout.WrappedEntry, cfg Config) 
 	fmt.Fprintf(b, "        <span class=\"header-title\">%s — Errata</span>\n", html.EscapeString(cfg.Title))
 	fmt.Fprintf(b, "        <span class=\"header-date\">%s</span>\n", html.EscapeString(cfg.Date))
 	fmt.Fprintf(b, "      </div>\n")
-	fmt.Fprintf(b, "      <span class=\"header-range\"></span>\n")
+	writeRangeSpan(b, "      ", "", "")
 	fmt.Fprintf(b, "      <span class=\"header-pagenum\"></span>\n")
 	fmt.Fprintf(b, "    </div>\n")
 	fmt.Fprintf(b, "  </div>\n")
