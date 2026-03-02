@@ -16,12 +16,9 @@
           version = "0.1.0";
           src = ./.;
 
-          # Set to the output of `nix build` after first run and then run:
-          #   nix build --print-out-paths 2>&1 | grep hash
-          # Or run: nix build 2>&1 | grep -A1 "got:"
-          # Until the vendor hash is known, keep this as null only when using
-          # `go mod vendor` (vendor/ committed alongside source). If using the
-          # module proxy (no vendor/), replace null with the actual hash.
+          # No external Go dependencies → null is correct here.
+          # If you add dependencies in the future, replace with the output of:
+          #   nix build 2>&1 | grep "got:"
           vendorHash = null;
         };
 
