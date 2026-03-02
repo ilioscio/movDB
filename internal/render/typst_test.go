@@ -203,6 +203,23 @@ func TestRenderTypst_PageRangeQueryInHeader(t *testing.T) {
 	}
 }
 
+func TestRenderTypst_ErrataLeadingStar(t *testing.T) {
+	entries := []parser.Entry{
+		{
+			DisplayTitle: "***TS FILE*** Funny Girl (1968)",
+			RawDir:       "***TS FILE*** Funny Girl (1968)",
+			Errata:       []parser.ErrataFlag{{Kind: parser.ErrataLeadingStar, Message: "requires processing"}},
+		},
+	}
+	out := RenderTypst(entries, typstCfg)
+	if !strings.Contains(out, "require processing") {
+		t.Error("leading-star errata heading missing")
+	}
+	if !strings.Contains(out, "Funny Girl") {
+		t.Error("leading-star errata entry missing")
+	}
+}
+
 func TestRenderTypst_ErrataGroupedByKind(t *testing.T) {
 	entries := []parser.Entry{
 		{

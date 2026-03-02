@@ -304,6 +304,15 @@ func writeErrata(b *strings.Builder, entries []layout.WrappedEntry, cfg Config) 
 	// Group by errata kind.
 	byKind := groupByKind(entries)
 
+	if items, ok := byKind[parser.ErrataLeadingStar]; ok {
+		fmt.Fprintf(b, "  <div class=\"errata-group\">\n")
+		fmt.Fprintf(b, "    <h3>Directories that require processing</h3>\n")
+		for _, item := range items {
+			writeErrataItem(b, item)
+		}
+		fmt.Fprintf(b, "  </div>\n\n")
+	}
+
 	if items, ok := byKind[parser.ErrataLeadingThe]; ok {
 		fmt.Fprintf(b, "  <div class=\"errata-group\">\n")
 		fmt.Fprintf(b, "    <h3>Directories with leading &#8220;The&#8221; (auto-corrected in list)</h3>\n")

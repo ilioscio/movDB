@@ -176,6 +176,43 @@ func TestParseDirName_MissingYear(t *testing.T) {
 	}
 }
 
+func TestParseDirName_LeadingStar(t *testing.T) {
+	// Exactly 3 asterisks → flagged.
+	e := ParseDirName("***TS FILE*** Funny Girl (1968)")
+	if len(e.Errata) == 0 || e.Errata[0].Kind != ErrataLeadingStar {
+		t.Errorf("expected ErrataLeadingStar, got %v", e.Errata)
+	}
+	// Year still extracted correctly.
+	if e.Year != 1968 {
+		t.Errorf("expected year 1968, got %d", e.Year)
+	}
+}
+
+func TestParseDirName_LeadingStarThreshold(t *testing.T) {
+	// 1 or 2 asterisks should NOT trigger the flag.
+	for _, name := range []string{"*Foo (2001)", "**Foo (2001)"} {
+		e := ParseDirName(name)
+		for _, f := range e.Errata {
+			if f.Kind == ErrataLeadingStar {
+				t.Errorf("ParseDirName(%q): unexpected ErrataLeadingStar", name)
+			}
+		}
+	}
+	// 3 or more should trigger it.
+	for _, name := range []string{"***Foo (2001)", "****Foo (2001)"} {
+		e := ParseDirName(name)
+		found := false
+		for _, f := range e.Errata {
+			if f.Kind == ErrataLeadingStar {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("ParseDirName(%q): expected ErrataLeadingStar", name)
+		}
+	}
+}
+
 func TestParseDirName_InvalidYear(t *testing.T) {
 	e := ParseDirName("Cartoons (Misc.)")
 	if len(e.Errata) != 1 || e.Errata[0].Kind != ErrataInvalidYear {

@@ -129,6 +129,14 @@ func writeTypstErrata(b *strings.Builder, items []typstErrataItem, cfg Config) {
 
 	byKind := typstGroupByKind(items)
 
+	if group, ok := byKind[parser.ErrataLeadingStar]; ok {
+		fmt.Fprintf(b, "== Directories that require processing\n\n")
+		for _, item := range group {
+			writeTypstErrataItem(b, item)
+		}
+		fmt.Fprintf(b, "\n")
+	}
+
 	if group, ok := byKind[parser.ErrataLeadingThe]; ok {
 		fmt.Fprintf(b, "== Directories with leading \"The\" (auto-corrected in list)\n\n")
 		for _, item := range group {

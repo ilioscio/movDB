@@ -22,7 +22,8 @@ import (
 type ErrataKind int
 
 const (
-	ErrataLeadingThe  ErrataKind = iota // "The Foo (1999)" → auto-corrected to "Foo, The (1999)"
+	ErrataLeadingStar ErrataKind = iota // directory starts with 3+ '*' — flagged for processing
+	ErrataLeadingThe                    // "The Foo (1999)" → auto-corrected to "Foo, The (1999)"
 	ErrataMissingYear                   // no year parenthetical found
 	ErrataInvalidYear                   // parenthetical found but content is not a year
 )
@@ -80,7 +81,23 @@ func ScanDirectory(path string) ([]Entry, error) {
 func ParseDirName(name string) Entry {
 	e := Entry{RawDir: name}
 
-	// Step 1: detect and auto-correct leading "The".
+	// Step 1: detect directories prefixed with 3+ asterisks.
+	starCount := 0
+	for _, r := range name {
+		if r == '*' {
+			starCount++
+		} else {
+			break
+		}
+	}
+	if starCount >= 3 {
+		e.Errata = append(e.Errata, ErrataFlag{
+			Kind:    ErrataLeadingStar,
+			Message: fmt.Sprintf("directory requires processing (%d leading asterisks): %q", starCount, name),
+		})
+	}
+
+	// Step 2: detect and auto-correct leading "The".
 	corrected, wasLeading := normalizeThe(name)
 	if wasLeading {
 		e.Errata = append(e.Errata, ErrataFlag{
@@ -90,7 +107,7 @@ func ParseDirName(name string) Entry {
 		name = corrected // work with the corrected form for the rest of parsing
 	}
 
-	// Step 2: find and validate the year parenthetical.
+	// Step 3: find and validate the year parenthetical.
 	yearInfo, yearErr := findYear(name)
 	switch yearErr {
 	case nil:
