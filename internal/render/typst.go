@@ -71,13 +71,17 @@ type typstErrataItem struct {
 
 func writeTypstPreamble(b *strings.Builder, cfg Config) {
 	// %%  →  literal % in fmt output (needed for Typst's 100% width).
-	fmt.Fprintf(b, `#set page(
+	fmt.Fprintf(b, `#let in-errata = state("in-errata", false)
+
+#set page(
   paper: "us-letter",
   margin: (x: 0.75in, y: 0.75in),
   header: context [
     #set text(size: 12pt)
     #let markers = query(<entry-mark>).filter(m => m.location().page() == here().page())
-    #let range-str = if markers.len() > 0 {
+    #let range-str = if in-errata.at(here()) {
+      "Errata"
+    } else if markers.len() > 0 {
       "'" + markers.first().value + "' to '" + markers.last().value + "'"
     } else { "" }
     #if calc.even(here().page()) [
@@ -122,7 +126,8 @@ func writeTypstPreamble(b *strings.Builder, cfg Config) {
 }
 
 func writeTypstErrata(b *strings.Builder, items []typstErrataItem, cfg Config) {
-	fmt.Fprintf(b, "\n#pagebreak()\n")
+	fmt.Fprintf(b, "\n#in-errata.update(true)\n")
+	fmt.Fprintf(b, "#pagebreak()\n")
 	fmt.Fprintf(b, "= %s — Errata\n\n", typstEscape(cfg.Title))
 	fmt.Fprintf(b, "The following entries require manual attention. ")
 	fmt.Fprintf(b, "They appear in the main list above but may have incorrect or missing metadata.\n\n")
