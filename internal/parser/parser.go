@@ -42,6 +42,10 @@ type Entry struct {
 	// SortKey is the lowercase DisplayTitle used for alphabetical ordering.
 	SortKey string
 
+	// Year is the first four-digit year extracted from the directory name.
+	// 0 means no valid year was found (entry is flagged in errata).
+	Year uint16
+
 	// RawDir is the original directory name, unchanged.
 	RawDir string
 
@@ -49,9 +53,10 @@ type Entry struct {
 	Errata []ErrataFlag
 }
 
-// ScanDirectory reads all subdirectory names from path and returns a sorted
-// slice of Entries. Non-directory entries are ignored. Entries with issues
-// (missing year, leading "The", etc.) are still included and flagged.
+// ScanDirectory reads all subdirectory names from path and returns a parsed
+// but unsorted slice of Entries. Non-directory entries are ignored.
+// Entries with issues (missing year, leading "The", etc.) are still included
+// and flagged. Call SortAlpha or SortByYear on the result before layout.
 func ScanDirectory(path string) ([]Entry, error) {
 	dirEntries, err := os.ReadDir(path)
 	if err != nil {
@@ -64,14 +69,6 @@ func ScanDirectory(path string) ([]Entry, error) {
 			continue
 		}
 		entries = append(entries, ParseDirName(de.Name()))
-	}
-
-	// Sort alphabetically by sort key (case-insensitive, numbers before letters).
-	sortEntries(entries)
-
-	// Assign 1-based numbers after sorting.
-	for i := range entries {
-		_ = i // numbers are assigned by layout, not stored here
 	}
 
 	return entries, nil
@@ -97,9 +94,16 @@ func ParseDirName(name string) Entry {
 	yearInfo, yearErr := findYear(name)
 	switch yearErr {
 	case nil:
-		// Happy path: extract title cleanly.
+		// Happy path: extract title and year cleanly.
 		title := strings.TrimRightFunc(name[:yearInfo.start], unicode.IsSpace)
 		e.DisplayTitle = title + " " + name[yearInfo.start:yearInfo.end+1]
+		// The first four characters inside '(' are guaranteed digits by isYearContent.
+		inner := name[yearInfo.start+1 : yearInfo.end]
+		var y uint16
+		for _, b := range []byte(inner[:4]) {
+			y = y*10 + uint16(b-'0')
+		}
+		e.Year = y
 
 	case errMissingYear:
 		// No parenthetical at all — include the raw name as the display title.
@@ -226,14 +230,41 @@ func normalizeThe(s string) (string, bool) {
 	return base + ", The" + year, true
 }
 
-// sortEntries sorts entries in-place using case-insensitive lexicographic
-// order of SortKey. This matches the traditional catalog sort where numerals
-// precede letters (because '0'–'9' < 'a'–'z' in ASCII/Unicode).
-func sortEntries(entries []Entry) {
-	// Simple insertion sort is fine for correctness; slice is typically <10k.
+// SortAlpha sorts entries in-place using case-insensitive lexicographic order
+// of SortKey. Numerals precede letters ('0'–'9' < 'a'–'z' in ASCII/Unicode),
+// matching the traditional catalog sort seen in the old implementation.
+func SortAlpha(entries []Entry) {
+	// Insertion sort — correct and fast enough for slices < 10k entries.
 	for i := 1; i < len(entries); i++ {
 		for j := i; j > 0 && entries[j].SortKey < entries[j-1].SortKey; j-- {
 			entries[j], entries[j-1] = entries[j-1], entries[j]
 		}
+	}
+}
+
+// SortByYear sorts entries in-place by ascending year. Entries with no valid
+// year (Year == 0) are placed at the end. Ties — same year, or both no year —
+// are broken alphabetically by SortKey.
+func SortByYear(entries []Entry) {
+	for i := 1; i < len(entries); i++ {
+		for j := i; j > 0 && yearLess(entries[j], entries[j-1]); j-- {
+			entries[j], entries[j-1] = entries[j-1], entries[j]
+		}
+	}
+}
+
+// yearLess reports whether a should sort before b in year order.
+func yearLess(a, b Entry) bool {
+	switch {
+	case a.Year == 0 && b.Year == 0:
+		return a.SortKey < b.SortKey // both unknown → alpha
+	case a.Year == 0:
+		return false // a unknown → goes to end
+	case b.Year == 0:
+		return true // b unknown → a sorts first
+	case a.Year != b.Year:
+		return a.Year < b.Year
+	default:
+		return a.SortKey < b.SortKey // same year → alpha tiebreak
 	}
 }

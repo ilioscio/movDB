@@ -37,7 +37,12 @@
 
         # `nix develop` → dev shell with Go toolchain
         devShells.default = pkgs.mkShell {
-          buildInputs = [ pkgs.go pkgs.gopls pkgs.gotools ];
+          buildInputs = [ pkgs.go pkgs.gopls pkgs.gotools pkgs.typst pkgs.libertine ];
+          # Typst doesn't automatically pick up fonts from nix store paths;
+          # TYPST_FONT_PATHS tells it exactly where to look.
+          shellHook = ''
+            export TYPST_FONT_PATHS="${pkgs.libertine}/share/fonts/opentype/public"
+          '';
         };
       })
 

@@ -198,20 +198,99 @@ func TestParseDirName_LeadingThePlusMissingYear(t *testing.T) {
 	}
 }
 
-// ─── sortEntries ──────────────────────────────────────────────────────────────
+// ─── Year extraction ──────────────────────────────────────────────────────────
 
-func TestSortEntries(t *testing.T) {
+func TestParseDirName_YearExtracted(t *testing.T) {
+	cases := []struct {
+		in       string
+		wantYear uint16
+	}{
+		{"Wizard of Oz, The (1939)", 1939},
+		{"TV Series (2005-2007)", 2005}, // range → first year
+		{"Ongoing Show (2010...)", 2010},
+		{"Cartoons Misc", 0},      // no year → 0
+		{"Cartoons (Misc.)", 0},   // invalid year → 0
+	}
+	for _, tc := range cases {
+		e := ParseDirName(tc.in)
+		if e.Year != tc.wantYear {
+			t.Errorf("ParseDirName(%q).Year = %d, want %d", tc.in, e.Year, tc.wantYear)
+		}
+	}
+}
+
+// ─── SortAlpha ────────────────────────────────────────────────────────────────
+
+func TestSortAlpha(t *testing.T) {
 	entries := []Entry{
 		{DisplayTitle: "Zorro (1998)", SortKey: "zorro (1998)"},
 		{DisplayTitle: "12 Angry Men (1957)", SortKey: "12 angry men (1957)"},
 		{DisplayTitle: "Abbott (1940)", SortKey: "abbott (1940)"},
 		{DisplayTitle: "100 Dalmatians (1961)", SortKey: "100 dalmatians (1961)"},
 	}
-	sortEntries(entries)
+	SortAlpha(entries)
 	want := []string{"100 dalmatians (1961)", "12 angry men (1957)", "abbott (1940)", "zorro (1998)"}
 	for i, e := range entries {
 		if e.SortKey != want[i] {
 			t.Errorf("position %d: got %q, want %q", i, e.SortKey, want[i])
 		}
+	}
+}
+
+// ─── SortByYear ───────────────────────────────────────────────────────────────
+
+func TestSortByYear_Ascending(t *testing.T) {
+	entries := []Entry{
+		{SortKey: "zorro (1998)", Year: 1998},
+		{SortKey: "12 angry men (1957)", Year: 1957},
+		{SortKey: "wizard of oz, the (1939)", Year: 1939},
+	}
+	SortByYear(entries)
+	wantYears := []uint16{1939, 1957, 1998}
+	for i, e := range entries {
+		if e.Year != wantYears[i] {
+			t.Errorf("position %d: got year %d, want %d", i, e.Year, wantYears[i])
+		}
+	}
+}
+
+func TestSortByYear_NoYearAtEnd(t *testing.T) {
+	entries := []Entry{
+		{SortKey: "no year here", Year: 0},
+		{SortKey: "abbott (1940)", Year: 1940},
+		{SortKey: "also no year", Year: 0},
+		{SortKey: "zorro (1998)", Year: 1998},
+	}
+	SortByYear(entries)
+	// No-year entries must both be at the end.
+	if entries[0].Year == 0 || entries[1].Year == 0 {
+		t.Errorf("no-year entries should be at end, got years: %d %d %d %d",
+			entries[0].Year, entries[1].Year, entries[2].Year, entries[3].Year)
+	}
+	if entries[2].Year != 0 || entries[3].Year != 0 {
+		t.Errorf("expected last two entries to have Year==0, got %d and %d",
+			entries[2].Year, entries[3].Year)
+	}
+}
+
+func TestSortByYear_SameYearAlphaTiebreak(t *testing.T) {
+	entries := []Entry{
+		{SortKey: "zorro (1939)", Year: 1939},
+		{SortKey: "abbott (1939)", Year: 1939},
+	}
+	SortByYear(entries)
+	if entries[0].SortKey != "abbott (1939)" {
+		t.Errorf("expected alpha tiebreak within same year, got %q first", entries[0].SortKey)
+	}
+}
+
+func TestSortByYear_NoYearAlphaTiebreak(t *testing.T) {
+	entries := []Entry{
+		{SortKey: "zebra", Year: 0},
+		{SortKey: "apple", Year: 0},
+	}
+	SortByYear(entries)
+	if entries[0].SortKey != "apple" {
+		t.Errorf("no-year entries should be alpha among themselves, got %q first", entries[0].SortKey)
 	}
 }

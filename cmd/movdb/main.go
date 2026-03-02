@@ -6,9 +6,11 @@
 //
 // Flags:
 //
-//	-o <file>     Output file path (default: stdout)
-//	-title <str>  Document title   (default: "Movie List")
-//	-date  <str>  Date string for page headers (default: today, YYYY-MM-DD)
+//	-o <file>       Output file path (default: stdout)
+//	-title <str>    Document title   (default: "Movie List")
+//	-date  <str>    Date string for page headers (default: today, YYYY-MM-DD)
+//	-y              Sort by year ascending instead of alphabetically
+//	-fmt html|typst Output format (default: html)
 package main
 
 import (
@@ -23,13 +25,15 @@ import (
 )
 
 func main() {
-	title := flag.String("title", "Movie List", "Document title shown in page headers")
-	output := flag.String("o", "", "Output file path (default: stdout)")
-	date := flag.String("date", "", "Date string for page headers (default: today)")
+	title     := flag.String("title", "Movie List", "Document title shown in page headers")
+	output    := flag.String("o", "", "Output file path (default: stdout)")
+	date      := flag.String("date", "", "Date string for page headers (default: today)")
+	byYear    := flag.Bool("y", false, "Sort by year ascending (entries with no year go to end)")
+	outputFmt := flag.String("fmt", "html", "Output format: html or typst")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: movdb [flags] <movies-directory>\n\n")
 		fmt.Fprintf(os.Stderr, "Reads subdirectory names from <movies-directory>, interprets them as\n")
-		fmt.Fprintf(os.Stderr, "movie titles, and generates a paginated two-column HTML list.\n\n")
+		fmt.Fprintf(os.Stderr, "movie titles, and generates a paginated two-column list.\n\n")
 		fmt.Fprintf(os.Stderr, "Flags:\n")
 		flag.PrintDefaults()
 	}
@@ -57,40 +61,62 @@ func main() {
 		os.Exit(1)
 	}
 
-	// ── Layout ───────────────────────────────────────────────────────────────
-	pages := layout.BuildPages(entries)
-
-	// Collect errata entries (appear in main list AND errata section).
-	var errataEntries []layout.WrappedEntry
-	seen := make(map[int]bool)
-	for _, p := range pages {
-		for _, col := range []layout.Column{p.Left, p.Right} {
-			for _, e := range col.Entries {
-				if e.IsIssue && !seen[e.Number] {
-					errataEntries = append(errataEntries, e)
-					seen[e.Number] = true
-				}
-			}
-		}
+	// ── Sort ─────────────────────────────────────────────────────────────────
+	if *byYear {
+		parser.SortByYear(entries)
+	} else {
+		parser.SortAlpha(entries)
 	}
 
 	// ── Render ───────────────────────────────────────────────────────────────
-	htmlDoc := render.RenderHTML(pages, errataEntries, render.Config{
-		Title: *title,
-		Date:  *date,
-	})
+	cfg := render.Config{Title: *title, Date: *date}
+	var doc string
+	var pageCount int
+
+	switch *outputFmt {
+	case "html":
+		pages := layout.BuildPages(entries)
+		pageCount = len(pages)
+		var errataEntries []layout.WrappedEntry
+		seen := make(map[int]bool)
+		for _, p := range pages {
+			for _, col := range []layout.Column{p.Left, p.Right} {
+				for _, e := range col.Entries {
+					if e.IsIssue && !seen[e.Number] {
+						errataEntries = append(errataEntries, e)
+						seen[e.Number] = true
+					}
+				}
+			}
+		}
+		doc = render.RenderHTML(pages, errataEntries, cfg)
+
+	case "typst":
+		// Typst handles pagination itself; layout.BuildPages is not needed.
+		doc = render.RenderTypst(entries, cfg)
+
+	default:
+		fmt.Fprintf(os.Stderr, "movdb: unknown format %q (choices: html, typst)\n", *outputFmt)
+		os.Exit(1)
+	}
 
 	// ── Output ───────────────────────────────────────────────────────────────
 	if *output == "" {
-		fmt.Print(htmlDoc)
+		fmt.Print(doc)
 		return
 	}
 
-	if err := os.WriteFile(*output, []byte(htmlDoc), 0o644); err != nil {
+	if err := os.WriteFile(*output, []byte(doc), 0o644); err != nil {
 		fmt.Fprintf(os.Stderr, "movdb: writing output: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Fprintf(os.Stderr, "movdb: wrote %d entries across %d pages → %s\n",
-		len(entries), len(pages), *output)
+	switch *outputFmt {
+	case "html":
+		fmt.Fprintf(os.Stderr, "movdb: wrote %d entries across %d pages → %s\n",
+			len(entries), pageCount, *output)
+	case "typst":
+		fmt.Fprintf(os.Stderr, "movdb: wrote %d entries → %s  (compile with: typst compile %s)\n",
+			len(entries), *output, *output)
+	}
 }
