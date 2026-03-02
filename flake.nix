@@ -13,7 +13,7 @@
 
         movdb = pkgs.buildGoModule {
           pname = "movdb";
-          version = "0.1.0";
+          version = "1.0.0";
           src = ./.;
 
           # No external Go dependencies → null is correct here.
