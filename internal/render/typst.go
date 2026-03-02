@@ -75,7 +75,7 @@ func writeTypstPreamble(b *strings.Builder, cfg Config) {
   paper: "us-letter",
   margin: (x: 0.75in, y: 0.75in),
   header: context [
-    #set text(size: 8pt)
+    #set text(size: 12pt)
     #let markers = query(<entry-mark>).filter(m => m.location().page() == here().page())
     #let range-str = if markers.len() > 0 {
       "'" + markers.first().value + "' to '" + markers.last().value + "'"

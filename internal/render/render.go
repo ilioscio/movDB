@@ -130,6 +130,7 @@ body {
   padding-bottom: 3pt;
   margin-bottom: 6pt;
   white-space: nowrap;
+  font-size: 11pt;
 }
 .header-left   { display: flex; gap: 1.5em; }
 .header-title  { font-weight: bold; }
