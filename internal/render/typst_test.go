@@ -102,10 +102,29 @@ func TestRenderTypst_TwoColumnBlock(t *testing.T) {
 func TestRenderTypst_EntryNumbers(t *testing.T) {
 	titles := []string{"Alpha (2001)", "Bravo (2002)", "Charlie (2003)"}
 	out := RenderTypst(makeTypstEntries(titles), typstCfg)
-	for _, num := range []string{"[1]", "[2]", "[3]"} {
-		if !strings.Contains(out, "#entry"+num) {
-			t.Errorf("missing entry with number %s", num)
+	// Odd entries: #entry(shaded: true)[N][title]
+	// Even entries: #entry[N][title]
+	// In both cases the number appears as [N][ — match on that.
+	for _, num := range []string{"[1][", "[2][", "[3]["} {
+		if !strings.Contains(out, num) {
+			t.Errorf("missing entry with number pattern %q", num)
 		}
+	}
+}
+
+func TestRenderTypst_OddEntriesShaded(t *testing.T) {
+	titles := []string{"Alpha (2001)", "Bravo (2002)", "Charlie (2003)"}
+	out := RenderTypst(makeTypstEntries(titles), typstCfg)
+	// Entry 1 and 3 (odd) must have shaded: true.
+	if !strings.Contains(out, "entry(shaded: true)[1]") {
+		t.Error("entry 1 (odd) should be shaded")
+	}
+	if !strings.Contains(out, "entry(shaded: true)[3]") {
+		t.Error("entry 3 (odd) should be shaded")
+	}
+	// Entry 2 (even) must NOT have shaded: true.
+	if strings.Contains(out, "entry(shaded: true)[2]") {
+		t.Error("entry 2 (even) should not be shaded")
 	}
 }
 

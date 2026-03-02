@@ -148,6 +148,9 @@ body {
      In screen mode this prevents orphaned continuation lines. */
   break-inside: avoid;
 }
+.entry.shaded {
+  background-color: #e8e8e8;
+}
 .entry-line {
   display: block;
   white-space: pre;      /* respect the pre-formatted spaces */
@@ -228,11 +231,14 @@ func writeColumn(b *strings.Builder, col layout.Column) {
 }
 
 func writeEntry(b *strings.Builder, e layout.WrappedEntry) {
-	issueClass := ""
-	if e.IsIssue {
-		issueClass = " issue"
+	class := "entry"
+	if e.Number%2 == 1 {
+		class += " shaded"
 	}
-	fmt.Fprintf(b, "      <div class=\"entry%s\">\n", issueClass)
+	if e.IsIssue {
+		class += " issue"
+	}
+	fmt.Fprintf(b, "      <div class=\"%s\">\n", class)
 
 	lines := layout.FormatEntryLines(e)
 	for _, l := range lines {

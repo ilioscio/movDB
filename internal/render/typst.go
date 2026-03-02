@@ -38,7 +38,11 @@ func RenderTypst(entries []parser.Entry, cfg Config) string {
 	var errata []typstErrataItem
 	for i, e := range entries {
 		num := i + 1
-		fmt.Fprintf(&b, "#entry[%d][%s]\n", num, typstEscape(e.DisplayTitle))
+		if num%2 == 1 {
+			fmt.Fprintf(&b, "#entry(shaded: true)[%d][%s]\n", num, typstEscape(e.DisplayTitle))
+		} else {
+			fmt.Fprintf(&b, "#entry[%d][%s]\n", num, typstEscape(e.DisplayTitle))
+		}
 		if len(e.Errata) > 0 {
 			errata = append(errata, typstErrataItem{Number: num, Entry: e})
 		}
@@ -74,17 +78,19 @@ func writeTypstPreamble(b *strings.Builder, cfg Config) {
       strong[%s],
       [Page #counter(page).display()],
     )
-    #v(-4pt)
+    #v(2pt)
     #line(length: 100%%, stroke: 0.5pt)
     #v(2pt)
   ],
 )
 #set text(font: "Linux Libertine O", size: 10pt)
-#set par(leading: 4pt, spacing: 6pt)
+#set par(leading: 4pt, spacing: 0pt)
 
-#let entry(num, title) = block(
+#let entry(num, title, shaded: false) = block(
   breakable: false,
   width: 100%%,
+  fill: if shaded { luma(232) } else { none },
+  inset: (x: 2pt, y: 3pt),
   grid(
     columns: (3em, 1fr),
     align: (right + top, left + top),
