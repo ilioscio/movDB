@@ -47,6 +47,7 @@ type WrappedEntry struct {
 	IsIssue bool     // true when this entry appears in the errata section
 	RawDir  string   // original directory name (for errata display)
 	Errata  []parser.ErrataFlag
+	Year    uint16   // release year, 0 if not found
 }
 
 // RowCount returns how many rows this entry occupies in a column.
@@ -82,6 +83,7 @@ func BuildPages(entries []parser.Entry) []Page {
 			IsIssue: len(e.Errata) > 0,
 			RawDir:  e.RawDir,
 			Errata:  e.Errata,
+			Year:    e.Year,
 		}
 	}
 

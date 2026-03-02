@@ -29,8 +29,9 @@ import (
 
 // Config holds document-level metadata used in page headers and the HTML title.
 type Config struct {
-	Title string // e.g. "Movie List"
-	Date  string // e.g. "2026-01-15"
+	Title  string // e.g. "Movie List"
+	Date   string // e.g. "2026-01-15"
+	ByYear bool   // true when entries are sorted by year; affects page range display
 }
 
 // RenderHTML produces a complete, self-contained HTML document.
@@ -119,17 +120,21 @@ body {
 }
 
 /* ── Page header ─────────────────────────────────────────────────────────── */
+/* grid: [title date] | [range] | [page#]
+   1fr on each side keeps range truly centered regardless of side widths.    */
 .page-header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: baseline;
   border-bottom: 1px solid #000;
   padding-bottom: 3pt;
   margin-bottom: 6pt;
   white-space: nowrap;
 }
-.header-date   { text-align: left; }
-.header-title  { text-align: center; flex: 1; font-weight: bold; }
+.header-left   { display: flex; gap: 1.5em; }
+.header-title  { font-weight: bold; }
+.header-date   {}
+.header-range  { text-align: center; padding: 0 1em; font-weight: bold; }
 .header-pagenum{ text-align: right; }
 
 /* ── Two-column body ─────────────────────────────────────────────────────── */
@@ -209,8 +214,16 @@ body {
 func writePage(b *strings.Builder, p layout.Page, cfg Config) {
 	fmt.Fprintf(b, "<div class=\"page\">\n")
 	fmt.Fprintf(b, "  <div class=\"page-header\">\n")
-	fmt.Fprintf(b, "    <span class=\"header-date\">%s</span>\n", html.EscapeString(cfg.Date))
-	fmt.Fprintf(b, "    <span class=\"header-title\">%s</span>\n", html.EscapeString(cfg.Title))
+	fmt.Fprintf(b, "    <div class=\"header-left\">\n")
+	fmt.Fprintf(b, "      <span class=\"header-title\">%s</span>\n", html.EscapeString(cfg.Title))
+	fmt.Fprintf(b, "      <span class=\"header-date\">%s</span>\n", html.EscapeString(cfg.Date))
+	fmt.Fprintf(b, "    </div>\n")
+	if first, last := pageRangeParts(p, cfg.ByYear); first != "" {
+		fmt.Fprintf(b, "    <span class=\"header-range\">'%s' to '%s'</span>\n",
+			html.EscapeString(first), html.EscapeString(last))
+	} else {
+		fmt.Fprintf(b, "    <span class=\"header-range\"></span>\n")
+	}
 	fmt.Fprintf(b, "    <span class=\"header-pagenum\">Page %d</span>\n", p.Number)
 	fmt.Fprintf(b, "  </div>\n")
 
@@ -252,8 +265,11 @@ func writeErrata(b *strings.Builder, entries []layout.WrappedEntry, cfg Config) 
 	fmt.Fprintf(b, "<div class=\"errata-page\">\n")
 	fmt.Fprintf(b, "  <div class=\"errata-header\">\n")
 	fmt.Fprintf(b, "    <div class=\"page-header\">\n")
-	fmt.Fprintf(b, "      <span class=\"header-date\">%s</span>\n", html.EscapeString(cfg.Date))
-	fmt.Fprintf(b, "      <span class=\"header-title\">%s — Errata</span>\n", html.EscapeString(cfg.Title))
+	fmt.Fprintf(b, "      <div class=\"header-left\">\n")
+	fmt.Fprintf(b, "        <span class=\"header-title\">%s — Errata</span>\n", html.EscapeString(cfg.Title))
+	fmt.Fprintf(b, "        <span class=\"header-date\">%s</span>\n", html.EscapeString(cfg.Date))
+	fmt.Fprintf(b, "      </div>\n")
+	fmt.Fprintf(b, "      <span class=\"header-range\"></span>\n")
 	fmt.Fprintf(b, "      <span class=\"header-pagenum\"></span>\n")
 	fmt.Fprintf(b, "    </div>\n")
 	fmt.Fprintf(b, "  </div>\n")
@@ -309,6 +325,49 @@ func writeFooter(b *strings.Builder) {
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
+
+// pageRangeParts returns the (first, last) range strings for a page header.
+// When byYear is true it uses the entry year; otherwise the title first word.
+// Returns ("", "") when the page has no entries.
+func pageRangeParts(p layout.Page, byYear bool) (first, last string) {
+	var firstEntry, lastEntry *layout.WrappedEntry
+	if len(p.Left.Entries) > 0 {
+		firstEntry = &p.Left.Entries[0]
+	} else if len(p.Right.Entries) > 0 {
+		firstEntry = &p.Right.Entries[0]
+	}
+	if len(p.Right.Entries) > 0 {
+		lastEntry = &p.Right.Entries[len(p.Right.Entries)-1]
+	} else if len(p.Left.Entries) > 0 {
+		lastEntry = &p.Left.Entries[len(p.Left.Entries)-1]
+	}
+	if firstEntry == nil || lastEntry == nil {
+		return "", ""
+	}
+	if byYear {
+		return yearLabel(firstEntry.Year), yearLabel(lastEntry.Year)
+	}
+	return titlePrefix(firstEntry.Lines[0]), titlePrefix(lastEntry.Lines[0])
+}
+
+// yearLabel formats a year for a page range header. Zero means no year found.
+func yearLabel(y uint16) string {
+	if y == 0 {
+		return "????"
+	}
+	return fmt.Sprintf("%d", y)
+}
+
+// titlePrefix returns the first whitespace-separated word of s with trailing
+// commas and periods stripped. Used to build page range labels like
+// 'Dark' to 'Dr' (rather than 'Mask,' or 'Dr.').
+func titlePrefix(s string) string {
+	words := strings.Fields(s)
+	if len(words) == 0 {
+		return ""
+	}
+	return strings.TrimRight(words[0], ",.")
+}
 
 // groupByKind returns a map from ErrataKind to the entries that have that kind.
 // An entry with multiple errata flags appears under each relevant kind.

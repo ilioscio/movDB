@@ -162,6 +162,85 @@ func TestRenderHTML_ErrataGroupedByKind(t *testing.T) {
 	}
 }
 
+// ─── Page range label ─────────────────────────────────────────────────────────
+
+func TestRenderHTML_PageRangeInHeader(t *testing.T) {
+	pages := []layout.Page{{
+		Number: 1,
+		Left: layout.Column{Entries: []layout.WrappedEntry{
+			{Number: 1, Lines: []string{"Doctor Sleep (2019)"}},
+		}},
+		Right: layout.Column{Entries: []layout.WrappedEntry{
+			{Number: 2, Lines: []string{"Ever After (1998)"}},
+		}},
+	}}
+	out := RenderHTML(pages, nil, testCfg)
+	if !strings.Contains(out, "'Doctor' to 'Ever'") {
+		t.Errorf("page range label missing from header; want \"'Doctor' to 'Ever'\" in output")
+	}
+}
+
+func TestRenderHTML_PageRangeByYear(t *testing.T) {
+	pages := []layout.Page{{
+		Number: 1,
+		Left: layout.Column{Entries: []layout.WrappedEntry{
+			{Number: 1, Lines: []string{"Murder He Says (1945)"}, Year: 1945},
+		}},
+		Right: layout.Column{Entries: []layout.WrappedEntry{
+			{Number: 2, Lines: []string{"Charlie Chan (1948)"}, Year: 1948},
+		}},
+	}}
+	out := RenderHTML(pages, nil, Config{Title: "Movie List", Date: "2026-01-15", ByYear: true})
+	if !strings.Contains(out, "'1945' to '1948'") {
+		t.Errorf("year range label missing; want \"'1945' to '1948'\" in output")
+	}
+}
+
+func TestRenderHTML_PageRangeByYearZero(t *testing.T) {
+	// Entries with no year (Year==0) show '????' in the range.
+	pages := []layout.Page{{
+		Number: 1,
+		Left: layout.Column{Entries: []layout.WrappedEntry{
+			{Number: 1, Lines: []string{"Untitled"}, Year: 0},
+		}},
+	}}
+	out := RenderHTML(pages, nil, Config{Title: "Movie List", Date: "2026-01-15", ByYear: true})
+	if !strings.Contains(out, "'????' to '????'") {
+		t.Errorf("zero-year range should show '????' to '????'")
+	}
+}
+
+func TestRenderHTML_PageRangeStripsTrailingPunctuation(t *testing.T) {
+	pages := []layout.Page{{
+		Number: 1,
+		Left: layout.Column{Entries: []layout.WrappedEntry{
+			{Number: 1, Lines: []string{"Dr. Jekyll and Mr. Hyde (1931)"}},
+		}},
+		Right: layout.Column{Entries: []layout.WrappedEntry{
+			{Number: 2, Lines: []string{"Mask, The (1994)"}},
+		}},
+	}}
+	out := RenderHTML(pages, nil, testCfg)
+	if !strings.Contains(out, "'Dr' to 'Mask'") {
+		t.Errorf("trailing punctuation not stripped; want \"'Dr' to 'Mask'\" in output")
+	}
+}
+
+func TestRenderHTML_PageRangeSingleColumn(t *testing.T) {
+	// When only the left column has entries, first == last prefix may differ.
+	pages := []layout.Page{{
+		Number: 1,
+		Left: layout.Column{Entries: []layout.WrappedEntry{
+			{Number: 1, Lines: []string{"Alien (1979)"}},
+			{Number: 2, Lines: []string{"Blade Runner (1982)"}},
+		}},
+	}}
+	out := RenderHTML(pages, nil, testCfg)
+	if !strings.Contains(out, "'Alien' to 'Blade'") {
+		t.Errorf("single-column range incorrect in output")
+	}
+}
+
 // ─── HTML escaping ────────────────────────────────────────────────────────────
 
 func TestRenderHTML_EscapesSpecialChars(t *testing.T) {

@@ -69,7 +69,7 @@ func main() {
 	}
 
 	// ── Render ───────────────────────────────────────────────────────────────
-	cfg := render.Config{Title: *title, Date: *date}
+	cfg := render.Config{Title: *title, Date: *date, ByYear: *byYear}
 	var doc string
 	var pageCount int
 

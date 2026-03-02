@@ -179,6 +179,30 @@ func TestRenderTypst_ErrataSection(t *testing.T) {
 	}
 }
 
+// ─── Page range markers ───────────────────────────────────────────────────────
+
+func TestRenderTypst_PageRangeMarkersEmitted(t *testing.T) {
+	entries := makeTypstEntries([]string{"Doctor Sleep (2019)", "Ever After (1998)"})
+	out := RenderTypst(entries, typstCfg)
+	// Each entry must be preceded by a metadata marker with its 2-word prefix.
+	if !strings.Contains(out, `metadata("Doctor")<entry-mark>`) {
+		t.Error("metadata marker for 'Doctor' not found")
+	}
+	if !strings.Contains(out, `metadata("Ever")<entry-mark>`) {
+		t.Error("metadata marker for 'Ever' not found")
+	}
+}
+
+func TestRenderTypst_PageRangeQueryInHeader(t *testing.T) {
+	out := RenderTypst(makeTypstEntries([]string{"Wall-E (2008)"}), typstCfg)
+	if !strings.Contains(out, "query(<entry-mark>)") {
+		t.Error("query(<entry-mark>) not found in preamble header")
+	}
+	if !strings.Contains(out, "range-str") {
+		t.Error("range-str variable not found in preamble header")
+	}
+}
+
 func TestRenderTypst_ErrataGroupedByKind(t *testing.T) {
 	entries := []parser.Entry{
 		{

@@ -38,6 +38,11 @@ func RenderTypst(entries []parser.Entry, cfg Config) string {
 	var errata []typstErrataItem
 	for i, e := range entries {
 		num := i + 1
+		if cfg.ByYear {
+			fmt.Fprintf(&b, "#metadata(\"%s\")<entry-mark>\n", yearLabel(e.Year))
+		} else {
+			fmt.Fprintf(&b, "#metadata(\"%s\")<entry-mark>\n", typstStringEscape(titlePrefix(e.DisplayTitle)))
+		}
 		if num%2 == 1 {
 			fmt.Fprintf(&b, "#entry(shaded: true)[%d][%s]\n", num, typstEscape(e.DisplayTitle))
 		} else {
@@ -71,11 +76,15 @@ func writeTypstPreamble(b *strings.Builder, cfg Config) {
   margin: (x: 0.75in, y: 0.75in),
   header: context [
     #set text(size: 8pt)
+    #let markers = query(<entry-mark>).filter(m => m.location().page() == here().page())
+    #let range-str = if markers.len() > 0 {
+      "'" + markers.first().value + "' to '" + markers.last().value + "'"
+    } else { "" }
     #grid(
-      columns: (1fr, 1fr, 1fr),
+      columns: (1fr, auto, 1fr),
       align: (left + horizon, center + horizon, right + horizon),
-      [%s],
-      strong[%s],
+      [#strong[%s] #h(1em) %s],
+      [#strong[#range-str]],
       [Page #counter(page).display()],
     )
     #v(2pt)
@@ -99,7 +108,7 @@ func writeTypstPreamble(b *strings.Builder, cfg Config) {
   )
 )
 
-`, typstEscape(cfg.Date), typstEscape(cfg.Title))
+`, typstEscape(cfg.Title), typstEscape(cfg.Date))
 }
 
 func writeTypstErrata(b *strings.Builder, items []typstErrataItem, cfg Config) {
@@ -175,6 +184,14 @@ func typstEscape(s string) string {
 		b.WriteRune(r)
 	}
 	return b.String()
+}
+
+// typstStringEscape escapes a string for use inside a Typst string literal
+// ("..."). Only backslash and double-quote need escaping in that context.
+func typstStringEscape(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `"`, `\"`)
+	return s
 }
 
 // typstEscapeRaw escapes the backtick delimiter used inside Typst raw spans.
