@@ -84,8 +84,8 @@ func writeHeader(b *strings.Builder, cfg Config) {
 
 body {
   font-family: 'Courier New', Courier, monospace;
-  font-size: 9pt;
-  line-height: 12pt;
+  font-size: 12pt;
+  line-height: 14pt;
   background: #888;
 }
 

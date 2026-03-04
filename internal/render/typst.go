@@ -106,7 +106,7 @@ func writeTypstPreamble(b *strings.Builder, cfg Config) {
     #v(2pt)
   ],
 )
-#set text(font: "Linux Libertine O", size: 10pt)
+#set text(font: "Linux Libertine O", size: 12pt)
 #set par(leading: 4pt, spacing: 0pt)
 
 #let entry(num, title, shaded: false) = block(

@@ -49,14 +49,14 @@ added many new features.
 - `Config` struct: `Title string`, `Date string`, `ByYear bool`
 - `RenderHTML(pages, errataEntries, cfg)` — full self-contained HTML document
 - US Letter via CSS `@page { size: letter portrait; margin: 0.75in; }`
-- Courier New 9pt, `43ch` column width, `line-height: 12pt`
+- Courier New 12pt, `43ch` column width, `line-height: 14pt`
 - Zebra striping: odd-numbered entries get `background-color: #e8e8e8`
 - Errata section only rendered when `len(errataEntries) > 0`
 
 **Typst renderer (`internal/render/typst.go`)**
 
 - `RenderTypst(entries, cfg)` — does NOT use `layout.BuildPages`; Typst handles pagination
-- Font: Linux Libertine O 10pt (`pkgs.libertine` in nix devShell)
+- Font: Linux Libertine O 12pt (`pkgs.libertine` in nix devShell)
 - `TYPST_FONT_PATHS` must point to libertine's opentype dir (set in `flake.nix` shellHook)
 - `#block(breakable: false)` ensures entries never split across columns/pages
 - `#columns(2, gutter: 0.4in)` for two-column layout
@@ -72,6 +72,7 @@ added many new features.
 
 **Nix flake (`flake.nix`)**
 
+- Version: `1.0.0` (bumped from `0.1.0` at feature completion)
 - `buildGoModule` with `vendorHash = null` (no external Go dependencies)
 - `nix run github:ilioscio/movDB -- [flags] <dir>` — runs movdb directly
 - `nix run github:ilioscio/movDB#pdf -- -o out.pdf <dir>` — generates PDF via `movdb-pdf` wrapper
